@@ -387,8 +387,7 @@ class SelectableGroup extends Component {
   }
 
   mouseDown = e => {
-    if (this.mouseDownStarted || this.props.disabled) return
-
+    if (this.mouseDownStarted || this.props.disabled || e.button !== 0) return
     this.updateWhiteListNodes()
     if (this.inIgnoreList(e.target)) {
       this.mouseDownStarted = false
