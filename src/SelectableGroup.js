@@ -11,6 +11,7 @@ class SelectableGroup extends Component {
   static propTypes = {
     globalMouse: bool,
     ignoreList: array,
+    selectboxBlacklist: array,
     scrollSpeed: number,
     minimumSpeedFactor: number,
     allowClickWithoutSelected: bool,
@@ -96,6 +97,7 @@ class SelectableGroup extends Component {
     this.selectedItems = new Set()
     this.selectingItems = new Set()
     this.ignoreCheckCache = new Map()
+    this.selectboxBlacklist = new Map()
     this.ignoreList = this.props.ignoreList.concat([
       '.selectable-select-all',
       '.selectable-deselect-all',
@@ -382,6 +384,22 @@ class SelectableGroup extends Component {
     return shouldBeIgnored
   }
 
+  inSelectboxBlacklist(target) {
+    if (this.props.selectboxBlacklist == null) {
+      return false
+    }
+
+    if (this.selectboxBlacklist.get(target) !== undefined) {
+      return this.selectboxBlacklist.get(target)
+    }
+    const shouldBeIgnored = [
+      ...document.querySelectorAll(this.props.selectboxBlacklist.join(', ')),
+    ].some(ignoredNode => target === ignoredNode || ignoredNode.contains(target))
+
+    this.selectboxBlacklist.set(target, shouldBeIgnored)
+    return shouldBeIgnored
+  }
+
   updateWhiteListNodes() {
     this.ignoreListNodes = [...document.querySelectorAll(this.ignoreList.join(', '))]
   }
@@ -389,12 +407,13 @@ class SelectableGroup extends Component {
   mouseDown = e => {
     if (this.mouseDownStarted || this.props.disabled || e.button !== 0) return
     this.updateWhiteListNodes()
+
     if (this.inIgnoreList(e.target)) {
       this.mouseDownStarted = false
       return
     }
 
-    if (this.props.resetOnStart) {
+    if (this.props.resetOnStart && !this.inSelectboxBlacklist(e.target)) {
       this.clearSelection()
     }
     this.mouseDownStarted = true
@@ -420,9 +439,6 @@ class SelectableGroup extends Component {
       if (!collides) return
     }
 
-    this.updateRootBounds()
-    this.updateRegistry()
-
     this.mouseDownData = {
       boxLeft: e.pageX,
       boxTop: e.pageY,
@@ -431,10 +447,16 @@ class SelectableGroup extends Component {
       target: e.target,
     }
 
-    e.preventDefault()
+    this.updateRootBounds()
+    this.updateRegistry()
 
-    document.addEventListener('mousemove', this.openSelectbox)
-    document.addEventListener('touchmove', this.openSelectbox)
+    if (!this.inSelectboxBlacklist(e.target)) {
+      e.preventDefault()
+      document.addEventListener('mousemove', this.openSelectbox)
+      document.addEventListener('touchmove', this.openSelectbox)
+    } else {
+      this.mouseDownStarted = false
+    }
     document.addEventListener('mouseup', this.mouseUp)
     document.addEventListener('touchend', this.mouseUp)
   }
@@ -463,6 +485,9 @@ class SelectableGroup extends Component {
     const eventLeft = e.pageX
 
     if (!this.mouseMoved && isNodeInRoot(e.target, this.rootNode)) {
+      if (this.props.resetOnStart && this.inSelectboxBlacklist(this.mouseDownData.target)) {
+        this.clearSelection()
+      }
       this.handleClick(e, eventTop, eventLeft)
     } else {
       for (const item of this.selectingItems.values()) {
