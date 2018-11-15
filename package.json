@@ -1,6 +1,7 @@
 {
-  "name": "react-selectable-fast",
-  "version": "2.1.2",
+  "name": "@secoya/react-selectable-fast",
+  "access": "restricted",
+  "version": "2.1.2-secoya",
   "description": "Enable other React components to be selectable by drawing a box with your mouse/touch",
   "repository": {
     "type": "git",
